@@ -28,6 +28,24 @@ description: "写浙大物理实验预习报告与正式报告（任何 agent �
 - 原始记录照片、思考题只出现在正式报告。
 - **本技能不联网抓课件**：课件由用户自己下好放进来。
 
+## 首次使用：先引导配置，再写稿
+
+用户刚 clone 完、说「帮我装好 / 配置一下」，或根目录没有 `config.yaml` 时，**先做这一步**：
+
+    python3 <技能目录>/scripts/setup.py "<根目录>"
+
+它会：建 `模板/`、生成 `config.yaml` 与 `memory.md`、扫旧报告登记进 memory.md 的「实验清单」、
+检查 Python 依赖与 Word，最后打印 `NEED=…` 或 `READY=1`。**已有的 config.yaml / memory.md 不会被覆盖。**
+
+- `NEED` 非空 → 把这几项**一次问完**（姓名、10 位学号、课表、两份模板），别让用户自己去改 YAML；
+  用户给了模板文件但名字不同，就传 `--prep-template` / `--report-template`。
+- 拿到答案后带参数重跑，直到 `READY=1`：
+
+        python3 <技能目录>/scripts/setup.py "<根目录>" --name 张三 --id 1234567890 --class 机械2504
+
+- 用户只放了旧报告、没有模板：先让他在 `模板/` 放两份 docx，这是硬前提，不要自己造模板。
+- 配置完成后才开始写稿；此后每次写稿都从「第 0 步」起。
+
 ## 第 0 步：plan.py + memory.md
 
     python3 <技能目录>/scripts/plan.py "<根目录>" <n> <prep|report>

@@ -56,7 +56,25 @@ git clone https://github.com/Lineus/physics-report-cc.git
 | Cursor / Cline / Windsurf | 同上，或在规则文件里引用 `SKILL.md` |
 | 直接调 API | 把 `SKILL.md` + 对应 `references/*.md` 拼进 system prompt |
 
-装完对 Agent 说「写第 n 次实验的预习报告」即可触发。宿主差异、视觉能力降级方案见
+### 首次配置：让 Agent 引导你做完
+
+把项目路径告诉 Agent，说「帮我配置好」。它会跑：
+
+```bash
+python3 scripts/setup.py "<你的实验报告根目录>"
+```
+
+然后：
+
+1. 建 `模板/`，生成 `config.yaml` 与 `memory.md`；
+2. 扫你已有的报告，把实验清单登记进 `memory.md`；
+3. 检查依赖、公式渲染、Word / LibreOffice；
+4. 打印 `NEED=…`——把缺的（姓名、10 位学号、课表、两份模板）**一次问完**，
+   带参数重跑 `setup.py`，直到 `READY=1`。
+
+已有的 `config.yaml` / `memory.md` 不会被覆盖，重复跑是安全的。
+
+配好后对 Agent 说「写第 n 次实验的预习报告」即可触发。宿主差异、视觉能力降级方案见
 [`references/agents.md`](references/agents.md)。
 
 ## 目录约定
