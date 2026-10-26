@@ -1,10 +1,11 @@
 # physics-report-cc
 
-> 给 [OpenClaw](https://openclaw.ai) 用的浙大大学物理实验技能：**预习报告 + 正式实验报告**，从课件到可交的 Word/PDF 一条龙。
+> 浙大大学物理实验技能：**预习报告 + 正式实验报告**，从课件到可交的 Word/PDF 一条龙。
+> 不绑定宿主——OpenClaw、Claude Code、Codex CLI、Gemini CLI、Cursor、Cline 都能用。
 
-写一份能交的实验报告，麻烦的从来不是写字，是这些：课表第几次对应第几周、封面字段每年都在变、综述卡 500 字、原始记录是手写照片、不确定度要乘灵敏系数、Word 导 PDF 还会挑中文路径的刺。
+写一份漂亮的实验报告，麻烦的从来不是做好实验，是这些：把原始数据转成电子表格、写出LaTeX公式、逐项计算、画图、分析。
 
-这个技能把这些固定动作沉淀成流程，AI 负责读材料、算数据、画图、排版，你负责签字和交作业。
+这个技能把这些固定动作沉淀成流程，Agent 负责读材料、算数据、画图、排版，你负责给出原始数据、最终修改和提交作业。在这个循环中，Agent 会根据已改好的报告变得越来越懂你。
 
 ## 它做什么
 
@@ -15,20 +16,26 @@
 
 - 预习：按实验数量判定 500 / 800 字上限，取 2–3 张原理图，按「现象 → 原理与方法 → ①②③」组织正文。
 - 正式：原始记录读数据 → `calc.py` 出 `calc.json` → reportlab 出图 → 填模板 → Word 导 PDF → 逐页验版。
-- 两步都做同一件事：**用上一份成品当底稿**，只换封面字段和正文，版式不走样。
+- 两步都做同一件事：**用模板当底稿，前面所有作参考**，只换封面字段和正文，版式不走样。
+- 公式一律用 LaTeX（`$...$`）写，脚本转成 **Word 原生公式**：可编辑、可改字号，不是图片也不是拼出来的上下标。
+- Agent **有视觉能力时逐页审版**：图有没有超版心、被分页切断、图注跑页首、公式变方框——只看提取的文字发现不了这些。
 
 ## 不做什么
 
 - **不自动爬取课件**。学习通的资料请自己下好，放进对应文件夹；技能只消费本地文件。
 - 不代签、不 P 图、不拿理论值补缺测。
+- **它是辅助工具，不是代写工具**：数据必须来自真实的原始记录，结论与提交前的内容要你自己核对。
 - 不打包任何学校模板、课件或学生报告（版权与隐私原因，见 `NOTICE`）。
 
 ## 环境要求
 
-- OpenClaw（技能目录 `~/.openclaw/skills/`）
+- 任何有**文件读写 + shell** 的 Agent（纯聊天宿主不适用）
 - Python 3.10+
-- Windows + Microsoft Word（导出 PDF 走 Word COM；WSL 里调用 Windows 侧 PowerShell）
-- Python 包：`python-docx`、`PyMuPDF`、`Pillow`、`reportlab`
+- 导出 PDF：Windows + Word 最准（走 COM）；没有 Word 就装 LibreOffice，脚本自动退
+- Python 包：`python-docx`、`PyMuPDF`、`Pillow`、`reportlab`、`PyYAML`、`latex2mathml`
+
+**公式渲染**需要 Office 自带的 `MML2OMML.XSL`（Word 2007 起都有）。找不到时会退回
+`_{}`/`^{}` 写法并打印 `WARN`——能用，但不是原生公式。
 
 ```bash
 pip install -r requirements.txt
@@ -36,12 +43,22 @@ pip install -r requirements.txt
 
 ## 安装
 
+克隆到任意位置，再让 Agent 知道它在哪即可。
+
 ```bash
-git clone https://github.com/Lineus/physics-report-cc.git \
-  ~/.openclaw/skills/physics-report-cc
+git clone https://github.com/Lineus/physics-report-cc.git
 ```
 
-装完在 OpenClaw 里直接说「写第 3 次实验的预习报告」即可触发。
+| 宿主 | 放 / 指向哪里 |
+| --- | --- |
+| OpenClaw | `git clone ... ~/.openclaw/skills/physics-report-cc`，按 description 自动触发 |
+| Claude Code | 复制到 `.claude/skills/physics-report-cc/`（项目级）或 `~/.claude/skills/` |
+| Codex CLI / Gemini CLI | 在项目 `AGENTS.md` / `GEMINI.md` 里写一行：写报告前先读 `<路径>/SKILL.md` |
+| Cursor / Cline / Windsurf | 同上，或在规则文件里引用 `SKILL.md` |
+| 直接调 API | 把 `SKILL.md` + 对应 `references/*.md` 拼进 system prompt |
+
+装完对 Agent 说「写第 n 次实验的预习报告」即可触发。宿主差异、视觉能力降级方案见
+[`references/agents.md`](references/agents.md)。
 
 ## 目录约定
 
@@ -50,6 +67,7 @@ git clone https://github.com/Lineus/physics-report-cc.git \
 ```
 我的物理实验/
   config.yaml              # 从 config.example.yaml 复制
+  memory.md                # 项目记忆，Agent 维护（见下）
   课表.png                  # 课程时间表截图
   模板/
     预习报告模板.docx
@@ -65,7 +83,8 @@ git clone https://github.com/Lineus/physics-report-cc.git \
 ```
 
 - 目录名默认 `{n}-预` / `{n}`，可在 `config.yaml` 改成 `{n}预`。
-- 前几次的报告放不放都行；放了会被当作底稿和文风参考，没放就用模板。
+- **永远从模板起草**，前面的报告只作文风参考，不再当底稿。
+- `memory.md` 是 Agent 的长期记忆：版式偏好、文风、你每次手改的差异，都记在里面。
 - `N` 是第几次实验，`W` 是课表上的周次，**不是同一个数**。
 
 ## 配置
@@ -80,24 +99,57 @@ cp config.example.yaml 我的物理实验/config.yaml
 
 **预习报告**
 
-> 写第 3 次实验的预习报告，根目录是 `D:\物理实验`
+> 写第 n 次实验的预习报告
 
 技能会：读课表定周次 / 教师 → 检查 `3-预/` 里的课件 → 取原理图 → 按 500 字上限写 → 导出 PDF → 报字数。
 
 **正式报告**
 
-> 这是第 3 次实验的原始记录和思考题，帮我写正式报告
+> 这是第 n 次实验的原始记录和思考题，帮我写正式报告
 
 照片可以直接发，也可以放进 `3/`。技能会先算数据并打印自检（实测 / 理论 / 相对误差），再出图、填模板、导 PDF、逐页验版。
+
+## Agent 有眼睛，就让它逐页审
+
+导 PDF 之后，有视觉能力的 Agent 会把每页渲成图**逐页看**，而不是只提取文字：
+
+- 图有没有超出页边距、被分页从中间切断
+- 图注是否紧跟其图，有没有单独跑到次页页首
+- 有没有整页空白、半页空白、封面字段挤压换行
+- 公式有没有变方框、问号、半截
+
+这些在 `python-docx` 里都查不出来——Word 的分页逻辑它复现不了。所以「导 PDF + 看图」
+是这个技能唯一可靠的验版方式。没有视觉能力时，Agent 会用每页文字量做粗筛，并把 PDF 交给你过目。
+
+## 项目记忆：越用越懂你
+
+第一次写稿时 Agent 会执行 `memory.py init`，在根目录生成 `memory.md`，记下你的文风与版式偏好。
+
+你手改完成品后，直接对 Agent 说「我改过了，记住」：
+
+```bash
+python3 scripts/memory.py diff "<根目录>" "<旧版.docx>" "<改后.docx>" --n 3 --kind prep
+```
+
+它按**段落 / 表格 / 图片**三个层级比对，Word 重存造成的 run 拆分、缩进微调不会误判成改动；
+真正的内容变化会追加进 `memory.md` 的「改动日志」。下次写稿先读记忆，同样的退改不会犯第二次。
+
+想让 Agent 记住别的事，也可以直接说，或：
+
+```bash
+python3 scripts/memory.py note "<根目录>" "图注不要带公式"
+```
 
 ## 脚本
 
 | 脚本 | 用途 |
 | --- | --- |
-| `scripts/docx_fill.py` | 按锚点填模板、中文字体、真上下标、插图 |
+| `scripts/docx_fill.py` | 按锚点填模板、中文字体、LaTeX 公式、插图 |
+| `scripts/mathomml.py` | LaTeX → MathML → Word 原生公式（OMML） |
+| `scripts/memory.py` | 项目记忆：init / show / diff / note |
 | `scripts/pdf_extract_figs.py` | 从课件 PDF 取原图（位图 / 矢量） |
 | `scripts/chart.py` | reportlab 画坐标图 + 误差棒（替代坏掉的 matplotlib） |
-| `scripts/export_pdf.py` | Word COM 导 PDF，处理中文路径 / BOM / 锁文件 |
+| `scripts/export_pdf.py` | 导 PDF：Word COM 优先，LibreOffice 兜底 |
 | `scripts/plan.py` | 读 config.yaml，算目录 / 文件名 / 周次 / 模板 |
 | `scripts/check_env.py` | 检查依赖与 Word 是否可用 |
 
@@ -115,11 +167,18 @@ PowerShell 5.1 按 ANSI 读脚本，中文路径会乱码。`export_pdf.py` 已�
 **Q：学号写错？**
 技能只从 `config.yaml` 取学号，并校验 10 位。旧稿里的 9 位号不会被沿用。
 
+**Q：公式为什么不是图片？**
+正文里的 `$...$` 会被转成 Word 原生公式（LaTeX → MathML → OMML），在 Word 里可以点开改、字号跟随正文、也能被 PDF 正确检索。缺 `latex2mathml` 或 Office 的 `MML2OMML.XSL` 时会退回上下标写法并打印 `WARN`。
+
+**Q：我的 Agent 不能看图，能用吗？**
+能，但会降级：课表要你用 `config.yaml` 的 `schedule` 手填，原始记录要你贴文字或口述，最终版面要你自己过目。有视觉能力的 Agent 会自动逐页审版，这是质量差距最大的地方。
+
 ## 隐私与学术规范
 
 - `config.yaml` 含姓名学号，已在 `.gitignore` 里；不要提交。
 - 课表、课件、原始记录、成品报告都不要提交到公开仓库。
-- 本技能用于整理**本人已选课程**的材料、辅助计算与排版；请遵守所在学校的学术规范，提交前自行核对内容并签字。
+- 本技能是**辅助工具**：整理本人已选课程的材料、辅助计算、画图与排版，不替代实验操作、数据分析判断和你的最终核对。
+- 请遵守所在学校的学术规范；提交前自行核对内容、补签字，并对报告负责。
 
 ## License
 

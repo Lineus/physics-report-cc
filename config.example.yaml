@@ -1,5 +1,5 @@
 # 复制为 config.yaml 放在实验报告根目录，按实际情况填写。
-# config.yaml 含个人信息，不要提交到 git。
+# config.yaml / memory.md 含个人信息，不要提交到 git。
 
 student:
   name: ""          # 姓名，如 张三
@@ -20,7 +20,7 @@ schedule: []
 #    weekday: "星期二"
 #    half: "下午"
 #    experiment: "用霍尔法测直流圆线圈与亥姆霍兹线圈磁场"
-#    teacher: "王小明"
+#    teacher: "王斐然"
 #    desk: "14"
 
 templates:

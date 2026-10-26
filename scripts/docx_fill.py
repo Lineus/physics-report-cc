@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
-"""按锚点填 Word 模板（python-docx）：中文样式、真上下标、插图。
+"""按锚点填 Word 模板（python-docx）：中文样式、LaTeX 原生公式、插图。
 
-依赖：python-docx。用法见 docx-report-build/SKILL.md Step 3。
+公式写法：正文里用 $...$ 包 LaTeX，例如 $B=\\frac{\\mu_0 N I R^2}{2(R^2+x^2)^{3/2}}$，
+由 mathomml 转成 Word 原生公式（可编辑、可改字号）。没有 Office XSL 时自动退回
+_{下标} / ^{上标} 的 mini-markup。
+
+依赖：python-docx、lxml；公式另需 latex2mathml + Office 的 MML2OMML.XSL。
+
+用法见仓库根目录 SKILL.md 与 references/。
 """
 import re
 
@@ -47,9 +53,13 @@ def style_run(r, size=12, bold=False, font=BODY_FONT):
     return r
 
 
-def add_rich(p, text, size=12, bold=False):
-    """mini-markup：U_{p-p} → 下标，e^{-t/RC} → 上标。"""
-    for tk in re.split(r"(\^\{[^}]*\}|_\{[^}]*\})", text):
+MATH_RE = re.compile(r"\$([^$]+)\$")
+MARKUP_RE = re.compile(r"(\^\{[^}]*\}|_\{[^}]*\})")
+
+
+def _add_markup(p, text, size=12, bold=False):
+    """mini-markup：U_{p-p} → 下标，e^{-t/RC} → 上标。公式渲染失败时的退路。"""
+    for tk in MARKUP_RE.split(text):
         if not tk:
             continue
         if tk.startswith("_{"):
@@ -58,6 +68,25 @@ def add_rich(p, text, size=12, bold=False):
             style_run(p.add_run(tk[2:-1]), size, bold).font.superscript = True
         else:
             style_run(p.add_run(tk), size, bold)
+
+
+def add_rich(p, text, size=12, bold=False):
+    """正文写入：$LaTeX$ 转 Word 原生公式，其余走 mini-markup。
+
+    段落必须是从头开始写（函数只 append），这样文本与公式的先后顺序才对。
+    """
+    import mathomml
+
+    parts = MATH_RE.split(text)
+    for i, part in enumerate(parts):
+        if not part:
+            continue
+        if i % 2 == 1:                     # 奇数位是 $...$ 里的公式
+            if not mathomml.add_math(p, part.strip(), size=size):
+                print("WARN 公式未能转成 OMML，按原文写入：%s" % part[:60])
+                style_run(p.add_run(part), size, bold)
+        else:
+            _add_markup(p, part, size, bold)
 
 
 def new_para(doc, anchor):
@@ -112,7 +141,7 @@ def text_width_cm(doc):
 
 
 def open_base(template, target, fallback=None):
-    """从模板起一份新稿；模板不在了就退回上一版成品当底稿。
+    """从模板起一份新稿；模板确实不在了才退回上一版成品（应急，不是常态）。
 
     源目录可能同时有别的 agent 或他自己在动文件（模板被移走、成品被改名都
     遇到过）；重建时 clear_between() 会清掉旧内容，所以拿上一版成品当底稿是

@@ -75,6 +75,9 @@ def main():
     print("EXPERIMENT=" + str(experiment or ""))
     print("TEACHER=" + str(entry.get("teacher") or ""))
     print("DATE=" + str(entry.get("date") or ""))
+    mem = os.path.join(root, "memory.md")
+    print("MEMORY=" + mem)
+    print("MEMORY_EXISTS=" + ("1" if os.path.exists(mem) else "0"))
     print("MISSING=" + ",".join(missing))
     return 1 if missing else 0
 
