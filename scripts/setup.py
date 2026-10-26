@@ -24,10 +24,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(HERE)
 
 NEED = []
+STEPS = []          # 给用户看的人话清单
 
 
 def say(tag, msg):
     print("%-5s %s" % (tag, msg))
+
+
+def need(machine, human):
+    NEED.append(machine)
+    STEPS.append(human)
 
 
 def to_local(path):
@@ -136,7 +142,8 @@ def write_table(root, rows):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("root")
+    ap.add_argument("root", nargs="?", default=".")
+    ap.add_argument("--onboard", action="store_true", help="打印上手引导")
     ap.add_argument("--name", default="")
     ap.add_argument("--id", default="")
     ap.add_argument("--class", dest="klass", default="")
@@ -146,7 +153,26 @@ def main():
     a = ap.parse_args()
 
     root = to_local(a.root) or a.root
-    os.makedirs(root, exist_ok=True)
+
+    if not a.onboard:
+        real = os.path.abspath(root)
+        if real == os.path.abspath(TOP) or real.startswith(os.path.abspath(TOP) + os.sep):
+            say("ERR", "报告根目录不能设在技能目录里：%s" % real)
+            say("INFO", "另建一个空目录，例如 ~/物理实验 或 D:\\物理实验")
+            return 1
+        os.makedirs(root, exist_ok=True)
+
+    if a.onboard:
+        print("physics-report-cc 已就位。三句话说明白怎么用：")
+        print()
+        print("1) 给我一个文件夹当「实验报告根目录」，我把配置写进去（已有内容不覆盖）。")
+        print("2) 你自己准备三样东西：课表截图、预习报告模板、实验报告模板；")
+        print("   课件和原始记录照片到时候再放。")
+        print("3) 之后说「写第 N 次实验的预习报告」或「第 N 次实验报告」。")
+        print()
+        print("告诉我用哪个文件夹（新建一个空目录也行），我扫一遍看还差什么：")
+        print("  python3 scripts/setup.py \"<根目录>\"")
+        return 0
     say("OK", "根目录：" + os.path.abspath(root))
 
     # 1) 目录骨架
@@ -211,30 +237,37 @@ def main():
         if path and not os.path.exists(to_local(path) if os.path.isabs(path)
                                        else os.path.join(root, path)):
             say("ERR", "%s 模板不存在：%s" % (kind, path))
-            NEED.append("%s 模板的实际路径" % ("预习报告" if kind == "prep" else "实验报告"))
+            need("%s 模板的实际路径" % ("预习报告" if kind == "prep" else "实验报告"),
+                 "把%s模板放进 %s（文件名里带「%s」我就能认出来）"
+                 % ("预习报告" if kind == "prep" else "实验报告", tpl_dir,
+                    "预习" if kind == "prep" else "实验"))
         elif not path:
             hits = glob.glob(os.path.join(tpl_dir, "*.docx"))
             hit = [h for h in hits if ("预习" in os.path.basename(h)) == (kind == "prep")]
             if hit:
                 say("OK", "发现 %s 模板：%s" % (kind, os.path.basename(hit[0])))
             else:
-                NEED.append("%s 模板（放进 模板/）" % ("预习报告" if kind == "prep" else "实验报告"))
+                need("%s 模板（放进 模板/）" % ("预习报告" if kind == "prep" else "实验报告"),
+                     "把%s模板放进 %s（文件名里带「%s」我就能认出来）"
+                     % ("预习报告" if kind == "prep" else "实验报告", tpl_dir,
+                        "预习" if kind == "prep" else "实验"))
 
     # 7) 课表
     tt = os.path.join(root, a.timetable or "课表.png")
     if os.path.exists(tt):
         say("OK", "课表：%s" % os.path.basename(tt))
     else:
-        NEED.append("课表截图（默认 课表.png；也可在 config.yaml 里手填 schedule）")
+        need("课表截图（默认 课表.png；也可在 config.yaml 里手填 schedule）",
+             "课程时间表截图，存成 %s（读不出来也可以在 config.yaml 的 schedule 里手填）" % tt)
 
     # 8) 身份
     import yaml
     cfg = yaml.safe_load(open(cfg_path, encoding="utf-8")) or {}
     stu = cfg.get("student") or {}
     if not (stu.get("name") or "").strip():
-        NEED.append("姓名")
+        need("姓名", "你的姓名")
     if not (stu.get("id") or "").strip():
-        NEED.append("10 位学号")
+        need("10 位学号", "10 位学号")
 
     # 9) 环境
     print()
@@ -251,10 +284,21 @@ def main():
     print()
     if NEED:
         print("NEED=" + "；".join(NEED))
-        print("把上面这些问用户，拿到后再跑一次 setup.py（参数同上）。")
+        print()
+        print("---- 下面是给用户看的话，可以直接转述 ----")
+        print("目录和配置我先搭好了，还差 %d 样东西：" % len(STEPS))
+        for i, step in enumerate(STEPS, 1):
+            print("  %d. %s" % (i, step))
+        print()
+        print("补齐后跟我说一声「配置好了」，我接着往下走。")
+        print("（直接把信息发我也行：姓名、学号、模板在哪，我来写进配置。）")
         return 1
     print("READY=1")
-    print("下一步：对 Agent 说「写第 n 次实验的预习报告」。")
+    print()
+    print("---- 下面是给用户看的话，可以直接转述 ----")
+    print("配置好了，可以开工了。")
+    print("跟我说「写第 N 次实验的预习报告」，或者「第 N 次实验报告，资料放在 N 文件夹了」。")
+    print("手改完成品后说一句「我改过了」，我会把差异记进 memory.md。")
     return 0
 
 
