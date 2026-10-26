@@ -144,6 +144,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("root", nargs="?", default=".")
     ap.add_argument("--onboard", action="store_true", help="打印上手引导")
+    ap.add_argument("--count", type=int, default=12, help="预建到第几次实验（默认 12）")
+    ap.add_argument("--no-folders", action="store_true", help="不预建实验文件夹")
     ap.add_argument("--name", default="")
     ap.add_argument("--id", default="")
     ap.add_argument("--class", dest="klass", default="")
@@ -221,6 +223,30 @@ def main():
         shutil.copyfile(os.path.join(TOP, "memory.template.md"), mem)
         say("OK", "已生成 memory.md")
 
+    # 4.5) 预建 12 次实验的文件夹
+    folder_note = ""
+    if not a.no_folders and a.count > 0:
+        import yaml
+        cfg_now = yaml.safe_load(open(cfg_path, encoding="utf-8")) or {}
+        dirs = cfg_now.get("dirs") or {}
+        prep_pat = dirs.get("prep") or "{n}-预"
+        rep_pat = dirs.get("report") or "{n}"
+        made, existed = 0, 0
+        for n in range(1, a.count + 1):
+            for pat in (prep_pat, rep_pat):
+                path = os.path.join(root, pat.format(n=n))
+                if os.path.isdir(path):
+                    existed += 1
+                else:
+                    os.makedirs(path, exist_ok=True)
+                    made += 1
+        say("OK", "实验文件夹：新建 %d 个，已存在 %d 个（共 %d 次实验）"
+            % (made, existed, a.count))
+        folder_note = ("我已经按 %d 次实验把文件夹建好了（1/、1-预/ … %d/、%d-预/）。\n"
+                       "以前写过的报告直接放进对应编号的文件夹就行：第 3 次的预习放 3-预/，"
+                       "正式报告放 3/。我读得到它们的结构，会照着写风格。"
+                       % (a.count, a.count, a.count))
+
     # 5) 登记旧报告
     rows = scan_reports(root)
     if rows:
@@ -286,6 +312,9 @@ def main():
         print("NEED=" + "；".join(NEED))
         print()
         print("---- 下面是给用户看的话，可以直接转述 ----")
+        if folder_note:
+            print(folder_note)
+            print()
         print("目录和配置我先搭好了，还差 %d 样东西：" % len(STEPS))
         for i, step in enumerate(STEPS, 1):
             print("  %d. %s" % (i, step))
@@ -296,6 +325,9 @@ def main():
     print("READY=1")
     print()
     print("---- 下面是给用户看的话，可以直接转述 ----")
+    if folder_note:
+        print(folder_note)
+        print()
     print("配置好了，可以开工了。")
     print("跟我说「写第 N 次实验的预习报告」，或者「第 N 次实验报告，资料放在 N 文件夹了」。")
     print("手改完成品后说一句「我改过了」，我会把差异记进 memory.md。")

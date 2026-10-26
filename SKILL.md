@@ -35,8 +35,13 @@ description: "浙大物理实验报告技能（任何 agent 可用）：首次�
 
     python3 <技能目录>/scripts/setup.py "<根目录>"
 
-它会：建 `模板/`、生成 `config.yaml` 与 `memory.md`、扫旧报告登记进 memory.md 的「实验清单」、
-检查 Python 依赖与 Word，最后打印 `NEED=…` 或 `READY=1`。**已有的 config.yaml / memory.md 不会被覆盖。**
+它会：建 `模板/`、**按 12 次实验预建 `1/` `1-预/` … `12/` `12-预/`**、生成 `config.yaml` 与 `memory.md`、
+扫旧报告登记进 memory.md 的「实验清单」、检查 Python 依赖与 Word，最后打印 `NEED=…` 或 `READY=1`。
+**已有的目录 / config.yaml / memory.md 不会被覆盖或清空**（可重复跑）。
+
+- 次数可改：`--count 16`；不想要空目录：`--no-folders`。目录名跟随 `config.yaml` 的 `dirs`。
+- 建完要告诉用户：**旧报告按编号放进去**（第 3 次预习 → `3-预/`，正式 → `3/`），
+  工具会扫这些目录学结构；放不放都不影响出稿。
 
 - `NEED` 非空 → 把这几项**一次问完**（姓名、10 位学号、课表、两份模板），别让用户自己去改 YAML；
   用户给了模板文件但名字不同，就传 `--prep-template` / `--report-template`。
