@@ -118,7 +118,17 @@ cp config.example.yaml 我的物理实验/config.yaml
 - 公式有没有变方框、问号、半截
 
 这些在 `python-docx` 里都查不出来——Word 的分页逻辑它复现不了。所以「导 PDF + 看图」
-是这个技能唯一可靠的验版方式。没有视觉能力时，Agent 会用每页文字量做粗筛，并把 PDF 交给你过目。
+是这个技能唯一可靠的验版方式。
+
+先跑自动校对，它会把每页渲成 PNG：
+
+```bash
+python3 scripts/proof.py "<根目录>/<N>" "*第<W>周.docx" --render <N>/_work/pages
+```
+
+自动报空白页、图溢出、图注落单、docx 段落在 PDF 里缺失、三处字数；退出码 1 表示有 WARN。
+剩下「图是不是从中间被切断」「公式有没有变方框」只能靠看 `pages/` 里的图。
+没有视觉能力时，把 PDF 交给你过目即可。
 
 ## 项目记忆：越用越懂你
 
@@ -150,6 +160,8 @@ python3 scripts/memory.py note "<根目录>" "图注不要带公式"
 | `scripts/chart.py` | reportlab 画坐标图 + 误差棒（替代坏掉的 matplotlib） |
 | `scripts/export_pdf.py` | 导 PDF：Word COM 优先，LibreOffice 兜底 |
 | `scripts/plan.py` | 读 config.yaml，算目录 / 文件名 / 周次 / 模板 |
+| `scripts/refs.py` | 扫旧稿：字数 / 图数 / 公式数 / 章节骨架，只作结构参考 |
+| `scripts/proof.py` | 逐页校对：空白页、图溢出、图注落单、缺段、字数，并渲页面图 |
 | `scripts/check_env.py` | 检查依赖与 Word 是否可用 |
 
 ## 隐私与学术规范

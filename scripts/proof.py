@@ -39,6 +39,21 @@ def para_text(p):
                    if n.tag in (W_T, M_T) and n.text).strip()
 
 
+def lead_text(p):
+    """公式之前的中文部分。
+
+    PDF 提取出的公式字符与 docx 里的 OMML 拼接方式不同（多空格、换行、
+    上下标错位），整段比对必然误报。只用「第一个公式之前」的文字做核对。
+    """
+    buf = []
+    for node in p._p.iter():
+        if node.tag == M_T:
+            break
+        if node.tag == W_T and node.text:
+            buf.append(node.text)
+    return "".join(buf).strip()
+
+
 def docx_info(path):
     import docx
     d = docx.Document(path)
@@ -52,7 +67,8 @@ def docx_info(path):
             seen_img = False
     math_paras = sum(1 for p in d.paragraphs
                      if any(n.tag == M_T for n in p._p.iter()))
-    return d, paras, caps, math_paras
+    leads = [lead_text(p) for p in d.paragraphs]
+    return d, paras, caps, math_paras, leads
 
 
 def span(paras, start, stop):
@@ -65,7 +81,7 @@ def span(paras, start, stop):
 
 
 def check(docx_path, pdf_path, dpi, render_dir):
-    d, paras, caps, math_paras = docx_info(docx_path)
+    d, paras, caps, math_paras, leads = docx_info(docx_path)
     pdf = fitz.open(pdf_path)
     warns = 0
 
@@ -110,8 +126,14 @@ def check(docx_path, pdf_path, dpi, render_dir):
 
     print()
     ptxt = norm(full)
-    missing = [t for t in paras
-               if len(t) > 8 and norm(t)[:25] not in ptxt]
+    missing = []
+    for t, lead in zip(paras, leads):
+        key = norm(lead) if len(norm(lead)) >= 8 else ""
+        if not key:
+            continue                      # 纯公式段，或公式开头，跳过
+        probe = key[:20]
+        if probe not in ptxt:
+            missing.append(lead)
     if missing:
         warns += len(missing)
         print("WARN docx 有 %d 段在 PDF 里找不到（可能被截断或分页拆开）：" % len(missing))
