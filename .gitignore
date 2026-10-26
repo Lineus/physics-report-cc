@@ -1,0 +1,23 @@
+# 个人信息与产物
+config.yaml
+课表.png
+课表.pdf
+*.docx
+*.pdf
+*.jpg
+*.jpeg
+*.png
+_work/
+*.json
+!config.example.yaml
+!templates/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,36 @@
+# 复制为 config.yaml 放在实验报告根目录，按实际情况填写。
+# config.yaml 含个人信息，不要提交到 git。
+
+student:
+  name: ""          # 姓名，如 张三
+  id: ""            # 10 位学号
+  class: ""         # 班级，可留空
+
+# 实验报告根目录。留 "." 表示 config.yaml 所在目录。
+reports_root: "."
+
+# 课程时间表：图片 / PDF 路径，相对根目录。
+timetable: "课表.png"
+
+# 读不出课表图片时，在这里手填；字段与课表一致即可。
+schedule: []
+#  - n: 3
+#    week: 5
+#    date: "2026-10-20"
+#    weekday: "星期二"
+#    half: "下午"
+#    experiment: "用霍尔法测直流圆线圈与亥姆霍兹线圈磁场"
+#    teacher: "王小明"
+#    desk: "14"
+
+templates:
+  prep: "模板/预习报告模板.docx"
+  report: "模板/实验报告模板.docx"
+
+# 目录命名，{n} = 第几次实验
+dirs:
+  prep: "{n}-预"
+  report: "{n}"
+
+# 成品文件名模板（不含扩展名）
+filename: "{name} {id} {experiment} 第{week}周"
