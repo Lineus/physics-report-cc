@@ -1,7 +1,6 @@
 # physics-report-cc
 
 > 浙大大学物理实验技能：**预习报告 + 正式实验报告**，从课件到可交的 Word/PDF 一条龙。
-> 不绑定宿主——OpenClaw、Claude Code、Codex CLI、Gemini CLI、Cursor、Cline 都能用。
 
 写一份漂亮的实验报告，麻烦的从来不是做好实验，是这些：把原始数据转成电子表格、写出LaTeX公式、逐项计算、画图、分析。
 
@@ -29,13 +28,13 @@
 
 ## 环境要求
 
-- 任何有**文件读写 + shell** 的 Agent（纯聊天宿主不适用）
+- 任何有**文件读写 + shell** 的 Agent（纯聊天宿主不适用，建议用于带有图片能力的Agent）
 - Python 3.10+
 - 导出 PDF：Windows + Word 最准（走 COM）；没有 Word 就装 LibreOffice，脚本自动退
 - Python 包：`python-docx`、`PyMuPDF`、`Pillow`、`reportlab`、`PyYAML`、`latex2mathml`
 
 **公式渲染**需要 Office 自带的 `MML2OMML.XSL`（Word 2007 起都有）。找不到时会退回
-`_{}`/`^{}` 写法并打印 `WARN`——能用，但不是原生公式。
+`_{}`/`^{}` 写法并打印 `WARN`。
 
 ```bash
 pip install -r requirements.txt
@@ -152,26 +151,6 @@ python3 scripts/memory.py note "<根目录>" "图注不要带公式"
 | `scripts/export_pdf.py` | 导 PDF：Word COM 优先，LibreOffice 兜底 |
 | `scripts/plan.py` | 读 config.yaml，算目录 / 文件名 / 周次 / 模板 |
 | `scripts/check_env.py` | 检查依赖与 Word 是否可用 |
-
-## 常见问题
-
-**Q：为什么不用 matplotlib？**
-某些环境下系统包的 matplotlib 与 numpy 版本对不上，`import` 就报 `_ARRAY_API not found`。技能直接用 reportlab 矢量绘制，再转 PNG，反而更清晰。
-
-**Q：导 PDF 报「文档可能损坏」？**
-PowerShell 5.1 按 ANSI 读脚本，中文路径会乱码。`export_pdf.py` 已经处理：脚本写 BOM、路径在脚本内用 `Get-ChildItem` 解析。别自己另写 ps1 传中文参数。
-
-**Q：生成的 PDF 少了一页 / 多了空白页？**
-九成是分页符加错了位置。只加在板块标题段；图片段设 `keep_with_next`，图注段不设。
-
-**Q：学号写错？**
-技能只从 `config.yaml` 取学号，并校验 10 位。旧稿里的 9 位号不会被沿用。
-
-**Q：公式为什么不是图片？**
-正文里的 `$...$` 会被转成 Word 原生公式（LaTeX → MathML → OMML），在 Word 里可以点开改、字号跟随正文、也能被 PDF 正确检索。缺 `latex2mathml` 或 Office 的 `MML2OMML.XSL` 时会退回上下标写法并打印 `WARN`。
-
-**Q：我的 Agent 不能看图，能用吗？**
-能，但会降级：课表要你用 `config.yaml` 的 `schedule` 手填，原始记录要你贴文字或口述，最终版面要你自己过目。有视觉能力的 Agent 会自动逐页审版，这是质量差距最大的地方。
 
 ## 隐私与学术规范
 
