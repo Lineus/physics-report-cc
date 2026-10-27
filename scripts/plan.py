@@ -20,6 +20,10 @@ def die(msg):
 
 
 def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        print("用法: python3 plan.py <根目录> <n> <prep|report>")
+        print("读 <根目录>/config.yaml，输出 DIR / TEMPLATE / OUT / WEEK / EXPERIMENT / MEMORY 与 MISSING。")
+        raise SystemExit(0 if len(sys.argv) > 1 else 1)
     if len(sys.argv) < 4:
         die("用法: python3 plan.py <根目录> <n> <prep|report>")
     root, n, kind = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -57,20 +61,26 @@ def main():
     if not tpl or not os.path.exists(tpl_abs):
         missing.append("templates.%s" % tpl_key)
 
-    fname_tpl = cfg.get("filename") or "{name} {id} {experiment} 第{week}周"
-    try:
-        fname = fname_tpl.format(name=name, id=sid, experiment=experiment or "",
-                                 week=week if week is not None else "")
-    except KeyError as e:
-        die("filename 模板里有未知字段 %s" % e)
-
     print("ROOT=" + os.path.abspath(root))
     print("KIND=" + kind)
     print("N=" + str(n))
     print("DIR=" + out_dir)
     print("TEMPLATE=" + (tpl_abs or ""))
-    print("FILENAME=" + fname)
-    print("OUT=" + os.path.join(out_dir, fname + ".docx"))
+
+    # 缺实验名或周次时不要拼出一个残名（如「张三 1234567890  第周」）——
+    # 那种名字一旦被拿去建文件，整份交付都得改名。宁可留空让调用方先补齐。
+    if week is None or not experiment:
+        print("FILENAME=")
+        print("OUT=")
+        print("HINT=缺实验名或周次，先往 config.yaml 的 schedule 里加一条（或跑 setup.py --exp N --week W --experiment 名称）")
+    else:
+        fname_tpl = cfg.get("filename") or "{name} {id} {experiment} 第{week}周"
+        try:
+            fname = fname_tpl.format(name=name, id=sid, experiment=experiment, week=week)
+        except KeyError as e:
+            die("filename 模板里有未知字段 %s" % e)
+        print("FILENAME=" + fname)
+        print("OUT=" + os.path.join(out_dir, fname + ".docx"))
     print("WEEK=" + str(week if week is not None else ""))
     print("EXPERIMENT=" + str(experiment or ""))
     print("TEACHER=" + str(entry.get("teacher") or ""))

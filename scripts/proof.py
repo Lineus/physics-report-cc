@@ -3,7 +3,7 @@
 """逐页校对：docx + PDF 一起查，并把每页渲成图供人/多模态模型看。
 
 用法：
-    python3 proof.py "<目录>" "*第5周.docx" [--dpi 110] [--render <输出目录>]
+    python3 proof.py "<目录>" "*.docx" [--dpi 110] [--render <输出目录>]
 
 查六件事：
   1. 空白页      每页文字量 < 50 字 → 疑似空白

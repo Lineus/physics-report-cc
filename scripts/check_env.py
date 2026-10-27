@@ -23,6 +23,23 @@ def check_module(name, pip_name=None):
         return False
 
 
+def check_math():
+    """公式链路：latex2mathml + Office 的 MML2OMML.XSL。"""
+    ok = check_module("latex2mathml", "latex2mathml")
+    try:
+        import mathomml
+        xsl = mathomml.find_xsl()
+    except Exception as e:  # noqa: BLE001
+        print(f"{BAD} mathomml 导入失败：{e}")
+        return False
+    if xsl:
+        print(f"{OK} MML2OMML.XSL {xsl}")
+    else:
+        print(f"{BAD} 未找到 MML2OMML.XSL（Word 2007+ 自带）；公式会退回 _{{}}/^{{}} 写法")
+        ok = False
+    return ok
+
+
 def check_word():
     ps = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
     if not os.path.exists(ps):
@@ -52,6 +69,7 @@ def main():
     ]:
         ok = check_module(mod, pip) and ok
 
+    ok = check_math() and ok
     ok = check_word() and ok
     print()
     print("环境就绪" if ok else "还有依赖没装好，见上面的提示")

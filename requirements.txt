@@ -4,3 +4,4 @@ Pillow>=10.0
 reportlab>=4.0
 PyYAML>=6.0
 latex2mathml>=3.75
+lxml>=4.9

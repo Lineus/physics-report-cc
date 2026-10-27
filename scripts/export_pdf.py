@@ -177,8 +177,11 @@ def export(directory, pattern):
 
 
 def main():
-    if len(sys.argv) < 2:
-        raise SystemExit("用法: python3 export_pdf.py <目录> [文件名通配符]")
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        print("用法: python3 export_pdf.py <目录> [文件名通配符]")
+        print("优先 Word COM，失败自动退 LibreOffice；成功打印 PDF_OK=<路径>。")
+        print("环境变量 PRC_EXPORT=word|soffice 可强制指定。")
+        raise SystemExit(0 if len(sys.argv) > 1 else 1)
     export(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "*.docx")
 
 

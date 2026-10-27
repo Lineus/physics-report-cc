@@ -5,7 +5,7 @@
 用法（Agent 先问用户，再把答案作为参数传进来）：
 
     python3 setup.py "<根目录>" \
-        --name 张三 --id 1234567890 --class 机械2504 \
+        --name 张三 --id 1234567890 --class 机械2501 \
         --timetable 课表.png \
         --prep-template "模板/预习报告模板.docx" \
         --report-template "模板/实验报告模板.docx"
@@ -146,6 +146,12 @@ def main():
     ap.add_argument("--onboard", action="store_true", help="打印上手引导")
     ap.add_argument("--count", type=int, default=12, help="预建到第几次实验（默认 12）")
     ap.add_argument("--no-folders", action="store_true", help="不预建实验文件夹")
+    ap.add_argument("--exp", type=int, default=0, help="要登记周次的第几次实验")
+    ap.add_argument("--week", default="", help="该次实验对应的课表周次")
+    ap.add_argument("--experiment", default="", help="实验名称（照课表原文）")
+    ap.add_argument("--teacher", default="", help="指导教师")
+    ap.add_argument("--date", default="", help="实验日期，如 2026-10-20")
+    ap.add_argument("--desk", default="", help="实验桌号")
     ap.add_argument("--name", default="")
     ap.add_argument("--id", default="")
     ap.add_argument("--class", dest="klass", default="")
@@ -211,6 +217,19 @@ def main():
             cfg["templates"]["prep"] = a.prep_template
         if a.report_template:
             cfg["templates"]["report"] = a.report_template
+
+        if a.exp:
+            entry = {"n": a.exp}
+            for key, val in (("week", a.week), ("date", a.date),
+                             ("experiment", a.experiment),
+                             ("teacher", a.teacher), ("desk", a.desk)):
+                if val:
+                    entry[key] = int(val) if (key == "week" and str(val).isdigit()) else val
+            sched = [e for e in (cfg.get("schedule") or [])
+                     if str(e.get("n")) != str(a.exp)]
+            sched.append(entry)
+            sched.sort(key=lambda e: int(e.get("n", 0)))
+            cfg["schedule"] = sched
         open(cfg_path, "w", encoding="utf-8").write(
             yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False, default_flow_style=False))
         say("OK", "config.yaml 已写入")
@@ -285,6 +304,18 @@ def main():
     else:
         need("课表截图（默认 课表.png；也可在 config.yaml 里手填 schedule）",
              "课程时间表截图，存成 %s（读不出来也可以在 config.yaml 的 schedule 里手填）" % tt)
+
+    # 7.5) 周次与实验名：plan.py 靠它生成文件名
+    cfg_check = yaml.safe_load(open(cfg_path, encoding="utf-8")) or {}
+    if a.exp:
+        hit = next((e for e in (cfg_check.get("schedule") or [])
+                    if str(e.get("n")) == str(a.exp)), {})
+        if not hit.get("week") or not hit.get("experiment"):
+            need("schedule[n=%s] 的 week / experiment" % a.exp,
+                 "第 %s 次实验的周次和实验名称（照课表写）" % a.exp)
+    elif not (cfg_check.get("schedule") or []):
+        need("schedule",
+             "告诉我第几次实验对应第几周、实验名称叫什么（我写进 config.yaml）")
 
     # 8) 身份
     import yaml

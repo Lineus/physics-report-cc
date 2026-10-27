@@ -52,7 +52,8 @@
 
 ## 6 导出、验版、交付
 
-- 导出用 `scripts/export_pdf.py`；先复制到 `N-预/_work/preview.docx` 导出，再把 PDF 复制回 `N-预/` 的中文名。
+- 导出：`python3 <技能目录>/scripts/export_pdf.py "<根目录>/N-预" "*第W周.docx"`，PDF 与 docx 同目录同名。
+- 导出后跑 `proof.py` 并加 `--render`，它会报空白页、图注落单、缺段与三个字数。
 - 单实验通常封面 + 2 页正文。
-- **有视觉能力就逐页看**（见 `references/agents.md`）；没有就报页数与每页文字量，让用户过目。
-- 用 `MEDIA:`（或宿主等价的附件方式）附 docx 与 PDF，正文报路径与三个字数。
+- **有视觉能力就逐页看** `pages/` 里的图（见 `references/agents.md`）；没有就报页数与每页文字量，让用户过目。
+- 把 docx 与 PDF 作为附件交给用户（宿主方式不同，OpenClaw 用 `MEDIA:<路径>`）；正文报路径与三个字数。

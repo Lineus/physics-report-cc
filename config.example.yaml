@@ -6,9 +6,6 @@ student:
   id: ""            # 10 位学号
   class: ""         # 班级，可留空
 
-# 实验报告根目录。留 "." 表示 config.yaml 所在目录。
-reports_root: "."
-
 # 课程时间表：图片 / PDF 路径，相对根目录。
 timetable: "课表.png"
 

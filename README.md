@@ -68,6 +68,7 @@ git clone https://github.com/Lineus/physics-report-cc.git
 把项目路径告诉 Agent，说「帮我配置好」。它会跑：
 
 ```bash
+cd <克隆路径>            # 例如 ~/.openclaw/skills/physics-report-cc
 python3 scripts/setup.py "<你的实验报告根目录>"
 ```
 
@@ -76,8 +77,15 @@ python3 scripts/setup.py "<你的实验报告根目录>"
 1. 建 `模板/`，**按 12 次实验预建 `1/`、`1-预/` … `12/`、`12-预/`**，生成 `config.yaml` 与 `memory.md`；
 2. 扫你已有的报告，把实验清单登记进 `memory.md`；
 3. 检查依赖、公式渲染、Word / LibreOffice；
-4. 打印 `NEED=…`——把缺的（姓名、10 位学号、课表、两份模板）**一次问完**，
-   带参数重跑 `setup.py`，直到 `READY=1`。
+4. 打印 `NEED=…`——把缺的（姓名、10 位学号、课表、两份模板、周次与实验名）**一次问完**，
+   带参数重跑 `setup.py`，直到 `READY=1`：
+
+```bash
+python3 scripts/setup.py "<根目录>" --name 张三 --id 1234567890 \
+    --exp 3 --week 5 --experiment "用霍尔法测直流圆线圈与亥姆霍兹线圈磁场"
+```
+
+`--exp/--week/--experiment` 会写进 `config.yaml` 的 `schedule`，文件名与周次都从这里来。
 
 已有的 `config.yaml` / `memory.md` 不会被覆盖，重复跑是安全的。
 
@@ -150,10 +158,10 @@ cp config.example.yaml 我的物理实验/config.yaml
 先跑自动校对，它会把每页渲成 PNG：
 
 ```bash
-python3 scripts/proof.py "<根目录>/<N>" "*第<W>周.docx" --render <N>/_work/pages
+python3 scripts/proof.py "<根目录>/<N 或 N-预>" "*第<W>周.docx" --render <N>/_work/pages
 ```
 
-自动报空白页、图溢出、图注落单、docx 段落在 PDF 里缺失、三处字数；退出码 1 表示有 WARN。
+自动报空白页、图溢出、图注落单、docx 段落在 PDF 里缺失、综述/重点/难点三处字数；退出码 1 表示有 WARN。
 剩下「图是不是从中间被切断」「公式有没有变方框」只能靠看 `pages/` 里的图。
 没有视觉能力时，把 PDF 交给你过目即可。
 
@@ -189,7 +197,8 @@ python3 scripts/memory.py note "<根目录>" "图注不要带公式"
 | `scripts/plan.py` | 读 config.yaml，算目录 / 文件名 / 周次 / 模板 |
 | `scripts/refs.py` | 扫旧稿：字数 / 图数 / 公式数 / 章节骨架，只作结构参考 |
 | `scripts/proof.py` | 逐页校对：空白页、图溢出、图注落单、缺段、字数，并渲页面图 |
-| `scripts/check_env.py` | 检查依赖与 Word 是否可用 |
+| `scripts/setup.py` | 首次配置：建目录、生成 config/memory、登记旧稿、查环境 |
+| `scripts/check_env.py` | 检查依赖、公式链路（latex2mathml + XSL）与 Word |
 
 ## 隐私与学术规范
 

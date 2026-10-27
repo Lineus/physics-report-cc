@@ -43,11 +43,17 @@ description: "浙大物理实验报告技能（任何 agent 可用）：首次�
 - 建完要告诉用户：**旧报告按编号放进去**（第 3 次预习 → `3-预/`，正式 → `3/`），
   工具会扫这些目录学结构；放不放都不影响出稿。
 
-- `NEED` 非空 → 把这几项**一次问完**（姓名、10 位学号、课表、两份模板），别让用户自己去改 YAML；
-  用户给了模板文件但名字不同，就传 `--prep-template` / `--report-template`。
+- `NEED` 非空 → 把这几项**一次问完**（姓名、10 位学号、课表、两份模板、周次与实验名），
+  别让用户自己去改 YAML；模板文件名字不同就传 `--prep-template` / `--report-template`。
 - 拿到答案后带参数重跑，直到 `READY=1`：
 
-        python3 <技能目录>/scripts/setup.py "<根目录>" --name 张三 --id 1234567890 --class 机械2504
+        python3 <技能目录>/scripts/setup.py "<根目录>" \
+            --name 张三 --id 1234567890 --class 机械2501 \
+            --exp 3 --week 5 --experiment "用霍尔法测直流圆线圈与亥姆霍兹线圈磁场" \
+            --teacher 王斐然 --date 2026-10-20
+
+  `--exp/--week/--experiment` 写进 `config.yaml` 的 `schedule`，`plan.py` 靠它拼文件名。
+  没写这两项时 `plan.py` 会留空 `FILENAME/OUT` 并给 `HINT`，**不要**拿残缺文件名去建文件。
 
 - 用户只放了旧报告、没有模板：先让他在 `模板/` 放两份 docx，这是硬前提，不要自己造模板。
 - 配置完成后才开始写稿；此后每次写稿都从「第 0 步」起。
@@ -110,6 +116,20 @@ description: "浙大物理实验报告技能（任何 agent 可用）：首次�
 - 不用 Unicode 上下标字符，也不把公式贴成图片。
 - 转换失败（缺 `latex2mathml` 或 Office XSL）会退回 `_{}`/`^{}` 并打 `WARN`，把 `WARN` 如实告诉用户。
 
+## 调用脚本
+
+`docx_fill` / `mathomml` / `chart` 是**库**，不是命令行工具。写 `build.py` 时先把脚本目录加入 `sys.path`，
+否则 `import docx_fill` 会失败（`mathomml` 由 `docx_fill` 内部导入，同目录即可）：
+
+```python
+import sys
+sys.path.insert(0, "<技能目录>/scripts")
+from docx_fill import add_rich, clear_between, figure_block, find, open_base, text_block
+from chart import chart
+```
+
+命令行脚本（`plan` / `refs` / `proof` / `export_pdf` / `memory` / `setup` / `check_env`）直接 `python3 <路径>` 运行。
+
 ## 排版铁律
 
 - 从**模板**起草：`open_base(模板, OUT)`，不动原件。模板确实缺失才退回上一版成品。
@@ -133,13 +153,13 @@ description: "浙大物理实验报告技能（任何 agent 可用）：首次�
 
 ## 导出与验版
 
-    python3 <技能目录>/scripts/export_pdf.py "<根目录>/<N>" "*第<W>周.docx"
+    python3 <技能目录>/scripts/export_pdf.py "<根目录>/<N 或 N-预>" "*第<W>周.docx"
 
 - 有 Word 走 COM（Windows / WSL）；否则自动退到 LibreOffice。也可用 `PRC_EXPORT=word|soffice` 强制。
 - 成功打印 `PDF_OK=<路径>`，失败退出码 1。
 - 导出后跑逐页校对，它会渲好每页的 PNG：
 
-        python3 <技能目录>/scripts/proof.py "<根目录>/<N>" "*第<W>周.docx" --render <N>/_work/pages
+        python3 <技能目录>/scripts/proof.py "<根目录>/<N 或 N-预>" "*第<W>周.docx" --render <N>/_work/pages
 
   它报：空白页、图溢出、图注落单、docx 段落在 PDF 里缺失、三处字数、含公式段数。
   退出码 1 表示有 WARN，逐条确认后再交付。

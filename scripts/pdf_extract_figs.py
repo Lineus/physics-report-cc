@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """从讲义/PPT 导出的 PDF 里取图：位图拿原图，矢量图按 bbox 渲染。
 
-依赖：PyMuPDF(fitz) + Pillow。用法见 docx-report-build/SKILL.md Step 2。
+依赖：PyMuPDF(fitz) + Pillow。用法见 references/prep.md 第 2 节与 references/report.md Step 2。
 """
 import os
 
