@@ -28,7 +28,7 @@
 | --- | --- | --- |
 | 看图（多模态） | 课表、原始记录、成品 PDF 都可以直接看 | 课表读不出来 → 用 `config.yaml` 的 `schedule` 手填；原始记录 → 让用户口述或贴文本表格；成品验收 → 让用户自己看 PDF |
 | shell | 跑 `plan.py` / `export_pdf.py` | 没有 shell 的纯聊天宿主不适合本技能，至少需要文件读写 |
-| Word COM | 导 PDF 版式最准 | 用 LibreOffice（`soffice`），脚本会自动退 |
+| Word COM | 导 PDF 版式最准 | 装 WPS 就走 `KWPS.Application`；都没有用 LibreOffice，脚本自动退 |
 | 联网 | 不需要 | —— 本技能从不联网 |
 
 ## 视觉能力：逐页审查
@@ -50,5 +50,6 @@
 
 - **Claude Code**：默认工作目录是仓库根，脚本里的相对路径要基于 `$PWD`，别假设技能目录。
 - **Codex CLI**：沙箱默认只读，跑 `export_pdf.py` 前需要允许写 `_work/` 与目标目录。
-- **Windows 原生 Agent**（非 WSL）：`export_pdf.py` 的 `to_win()` 会原样返回 Windows 路径，Word COM 直接可用；LibreOffice 也走 `.exe`。
+- **Windows 原生 Agent**（非 WSL）：`export_pdf.py` 的 `to_win()` 会原样返回 Windows 路径，Word / WPS COM 直接可用；LibreOffice 也走 `.exe`。
+- **只装 WPS**：不用装 Office。导出用 `KWPS.Application`，公式走 `scripts/omml.py`；`check_env.py` 会确认这两条链路。
 - **macOS**：Word COM 不存在，走 LibreOffice；`MML2OMML.XSL` 在 `Microsoft Word.app/Contents/Resources/`。

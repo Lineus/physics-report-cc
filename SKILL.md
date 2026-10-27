@@ -114,7 +114,7 @@ description: "浙大物理实验报告技能（任何 agent 可用）：首次�
 - 行内公式不必另起段；独立成行时整段只放一个 `$...$`。
 - 同一符号前后统一（不要一会儿 `B_0` 一会儿 `B0`）。
 - 不用 Unicode 上下标字符，也不把公式贴成图片。
-- 转换失败（缺 `latex2mathml` 或 Office XSL）会退回 `_{}`/`^{}` 并打 `WARN`，把 `WARN` 如实告诉用户。
+- 没装 Office 时自动走 `scripts/omml.py` 的纯 Python 转换（WPS / Linux / macOS 都有原生公式）；只有两条都不可用才退回 `_{}`/`^{}` 并打 `WARN`，此时把 `WARN` 如实告诉用户。
 
 ## 调用脚本
 
@@ -155,7 +155,7 @@ from chart import chart
 
     python3 <技能目录>/scripts/export_pdf.py "<根目录>/<N 或 N-预>" "*第<W>周.docx"
 
-- 有 Word 走 COM（Windows / WSL）；否则自动退到 LibreOffice。也可用 `PRC_EXPORT=word|soffice` 强制。
+- 依次尝试 Word COM → WPS COM（`KWPS.Application`）→ LibreOffice；只装 WPS 的机器走第二条。可用 `PRC_EXPORT=word|wps|soffice` 强制。
 - 成功打印 `PDF_OK=<路径>`，失败退出码 1。
 - 导出后跑逐页校对，它会渲好每页的 PNG：
 

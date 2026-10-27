@@ -24,39 +24,49 @@ def check_module(name, pip_name=None):
 
 
 def check_math():
-    """公式链路：latex2mathml + Office 的 MML2OMML.XSL。"""
+    """公式链路：latex2mathml 必需；Office XSL 可选（没有就走纯 Python 转换）。"""
     ok = check_module("latex2mathml", "latex2mathml")
     try:
         import mathomml
-        xsl = mathomml.find_xsl()
     except Exception as e:  # noqa: BLE001
         print(f"{BAD} mathomml 导入失败：{e}")
         return False
-    if xsl:
-        print(f"{OK} MML2OMML.XSL {xsl}")
+    backend = mathomml.backend()
+    if backend == "xsl":
+        print(f"{OK} 公式转换：Office XSL（{mathomml.find_xsl()}）")
+    elif backend == "python":
+        print(f"{OK} 公式转换：纯 Python 回退（未装 Office，WPS / Linux 也适用）")
     else:
-        print(f"{BAD} 未找到 MML2OMML.XSL（Word 2007+ 自带）；公式会退回 _{{}}/^{{}} 写法")
+        print(f"{BAD} 公式转换不可用：缺 latex2mathml 或 scripts/omml.py")
         ok = False
     return ok
 
 
-def check_word():
+def check_office():
+    """导出 PDF 的三条路：Word COM / WPS COM / LibreOffice，有一条就够。"""
+    found = []
     ps = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
-    if not os.path.exists(ps):
-        print(f"{BAD} 未找到 Windows PowerShell：PDF 导出需要 Windows + Word")
-        return False
-    try:
-        out = subprocess.run(
-            [ps, "-NoProfile", "-Command",
-             "(New-Object -ComObject Word.Application).Version"],
-            capture_output=True, timeout=30,
-        )
-        ver = out.stdout.decode("utf-8", "ignore").strip()
-        print(f"{OK} Word COM {ver}" if ver else f"{BAD} Word COM 不可用")
-        return bool(ver)
-    except Exception as e:  # noqa: BLE001
-        print(f"{BAD} Word COM: {e}")
-        return False
+    if os.path.exists(ps):
+        for name, com in (("Word", "Word.Application"), ("WPS", "KWPS.Application")):
+            try:
+                out = subprocess.run(
+                    [ps, "-NoProfile", "-Command",
+                     f"try {{ $a = New-Object -ComObject {com}; Write-Output $a.Version; $a.Quit() }} catch {{ }}"],
+                    capture_output=True, timeout=40)
+                ver = out.stdout.decode("utf-8", "ignore").strip()
+            except Exception:  # noqa: BLE001
+                ver = ""
+            if ver:
+                found.append(f"{name} {ver}")
+    for exe in ("soffice", "libreoffice"):
+        if shutil.which(exe):
+            found.append(exe)
+            break
+    if found:
+        print(f"{OK} 导出 PDF：{' / '.join(found)}")
+        return True
+    print(f"{BAD} 没有可用的 PDF 导出方式（Word / WPS / LibreOffice 都没装）")
+    return False
 
 
 def main():
@@ -70,7 +80,7 @@ def main():
         ok = check_module(mod, pip) and ok
 
     ok = check_math() and ok
-    ok = check_word() and ok
+    ok = check_office() and ok
     print()
     print("环境就绪" if ok else "还有依赖没装好，见上面的提示")
     return 0 if ok else 1

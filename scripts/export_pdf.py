@@ -59,6 +59,32 @@ try {
 '''
 
 
+# WPS 的 COM 名是 KWPS.Application；接口与 Word 兼容（ExportAsFixedFormat 17 = PDF）。
+PS_WPS = r'''$ErrorActionPreference = "Continue"
+$dir = "{dir}"
+$pat = "{pat}"
+$f = Get-ChildItem -LiteralPath $dir -Filter $pat |
+     Where-Object { $_.Name -notlike '~$*' } |
+     Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($null -eq $f) { Write-Output "NOFILE"; exit 1 }
+Write-Output ("SRC=" + $f.Name)
+$dst = [System.IO.Path]::ChangeExtension($f.FullName, ".pdf")
+if (Test-Path -LiteralPath $dst) { Remove-Item -LiteralPath $dst -Force }
+$app = New-Object -ComObject KWPS.Application
+$app.Visible = $false
+try {
+  $doc = $app.Documents.Open($f.FullName, $false, $true)
+  $doc.ExportAsFixedFormat($dst, 17)
+  $doc.Close(0)
+  Write-Output ("PDF_OK=" + $dst)
+} catch {
+  Write-Output ("ERR=" + $_.Exception.Message)
+} finally {
+  $app.Quit()
+}
+'''
+
+
 def decode(blob):
     """PowerShell 5.1 的中文输出是控制台代码页（GBK），不是 UTF-8。"""
     if not blob:
@@ -138,6 +164,33 @@ def word_export(directory, pattern):
     return stdout.split("PDF_OK=", 1)[1].strip().splitlines()[0]
 
 
+def _run_com_export(directory, pattern, template, label):
+    """跑一段 COM 导出脚本（Word 或 WPS），返回 PDF 路径或 None。"""
+    pwsh = first_existing(PWSH_CANDIDATES)
+    if not pwsh:
+        return None
+    work = os.path.join(to_local(directory), "_work")
+    os.makedirs(work, exist_ok=True)
+    ps_path = os.path.join(work, "_export_pdf_%s.ps1" % label)
+    body = template.replace("{dir}", to_win(directory)).replace("{pat}", pattern)
+    with open(ps_path, "wb") as f:
+        f.write(b"\xef\xbb\xbf" + body.encode("utf-8"))
+    out = subprocess.run([pwsh, "-NoProfile", "-ExecutionPolicy", "Bypass",
+                          "-File", to_win(ps_path)], capture_output=True, timeout=300)
+    stdout = decode(out.stdout)
+    for line in stdout.splitlines():
+        if line.strip() and not line.startswith("PDF_OK="):
+            print("  [%s] %s" % (label, line))
+    if "PDF_OK=" not in stdout:
+        return None
+    return stdout.split("PDF_OK=", 1)[1].strip().splitlines()[0]
+
+
+def wps_export(directory, pattern):
+    """只装了 WPS 的机器：KWPS.Application 导 PDF。"""
+    return _run_com_export(directory, pattern, PS_WPS, "wps")
+
+
 def soffice_export(directory, pattern):
     exe = first_existing(SOFFICE_CANDIDATES)
     if not exe:
@@ -157,10 +210,13 @@ def soffice_export(directory, pattern):
 
 
 def export(directory, pattern):
-    order = (word_export, soffice_export)
+    """Word COM → WPS COM → LibreOffice，哪条能跑通用哪条。"""
+    order = (word_export, wps_export, soffice_export)
     force = os.environ.get("PRC_EXPORT", "").lower()
     if force == "soffice":
         order = (soffice_export,)
+    elif force == "wps":
+        order = (wps_export,)
     elif force == "word":
         order = (word_export,)
     for fn in order:
@@ -172,7 +228,7 @@ def export(directory, pattern):
         if path:
             print("PDF_OK=" + path)
             return path
-    print("ERR=两种导出方式都失败（Word COM / LibreOffice）")
+    print("ERR=三种导出方式都失败（Word COM / WPS / LibreOffice）")
     raise SystemExit(1)
 
 

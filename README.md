@@ -30,11 +30,14 @@
 
 - 任何有**文件读写 + shell** 的 Agent（纯聊天宿主不适用，建议用于带有图片能力的Agent）
 - Python 3.10+
-- 导出 PDF：Windows + Word 最准（走 COM）；没有 Word 就装 LibreOffice，脚本自动退
-- Python 包：`python-docx`、`PyMuPDF`、`Pillow`、`reportlab`、`PyYAML`、`latex2mathml`
+- 导出 PDF：**Word 或 WPS 都行**（走 COM，WPS 用 `KWPS.Application`）；两者都没有就装 LibreOffice。脚本按 Word → WPS → LibreOffice 依次尝试，也可用 `PRC_EXPORT=word|wps|soffice` 强制
+- Python 包：`python-docx`、`PyMuPDF`、`Pillow`、`reportlab`、`PyYAML`、`latex2mathml`、`lxml`
 
-**公式渲染**需要 Office 自带的 `MML2OMML.XSL`（Word 2007 起都有）。找不到时会退回
-`_{}`/`^{}` 写法并打印 `WARN`。
+**公式渲染不强制装 Office**：有 Office 时用它的 `MML2OMML.XSL`；只装 WPS、或者在 Linux / macOS 上，
+自动走内置的纯 Python 转换（`scripts/omml.py`），同样产出可编辑的 Word 原生公式。
+两条链路都不可用时才退回 `_{}`/`^{}` 写法并打印 `WARN`。
+
+> 只有 WPS 的机器无需额外配置：`check_env.py` 会分别探测 Word / WPS / LibreOffice，报告实际可用的一条。
 
 ```bash
 pip install -r requirements.txt
@@ -76,7 +79,7 @@ python3 scripts/setup.py "<你的实验报告根目录>"
 
 1. 建 `模板/`，**按 12 次实验预建 `1/`、`1-预/` … `12/`、`12-预/`**，生成 `config.yaml` 与 `memory.md`；
 2. 扫你已有的报告，把实验清单登记进 `memory.md`；
-3. 检查依赖、公式渲染、Word / LibreOffice；
+3. 检查依赖、公式链路、以及可用的 PDF 导出方式（Word / WPS / LibreOffice）；
 4. 打印 `NEED=…`——把缺的（姓名、10 位学号、课表、两份模板、周次与实验名）**一次问完**，
    带参数重跑 `setup.py`，直到 `READY=1`：
 
@@ -193,7 +196,8 @@ python3 scripts/memory.py note "<根目录>" "图注不要带公式"
 | `scripts/memory.py` | 项目记忆：init / show / diff / note |
 | `scripts/pdf_extract_figs.py` | 从课件 PDF 取原图（位图 / 矢量） |
 | `scripts/chart.py` | reportlab 画坐标图 + 误差棒（替代坏掉的 matplotlib） |
-| `scripts/export_pdf.py` | 导 PDF：Word COM 优先，LibreOffice 兜底 |
+| `scripts/export_pdf.py` | 导 PDF：Word COM → WPS COM → LibreOffice |
+| `scripts/omml.py` | MathML → OMML 纯 Python 转换（无 Office 时用） |
 | `scripts/plan.py` | 读 config.yaml，算目录 / 文件名 / 周次 / 模板 |
 | `scripts/refs.py` | 扫旧稿：字数 / 图数 / 公式数 / 章节骨架，只作结构参考 |
 | `scripts/proof.py` | 逐页校对：空白页、图溢出、图注落单、缺段、字数，并渲页面图 |

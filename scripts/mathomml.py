@@ -72,23 +72,39 @@ def find_xsl():
 
 
 def available():
-    """公式渲染是否可用（latex2mathml + XSL 都在）。"""
+    """公式渲染是否可用。
+
+    只要求 latex2mathml：Office 的 XSL 是首选，没有它就走纯 Python 的 omml
+    回退（WPS / 纯 Linux / macOS 都是这条）。
+    """
     try:
         import latex2mathml.converter  # noqa: F401
     except Exception:  # noqa: BLE001
         return False
-    return find_xsl() is not None
+    return True
+
+
+def backend():
+    """当前会用哪条链路：'xsl'（Word 有 XSL）或 'python'（WPS / 无 Office）。"""
+    if find_xsl() is not None:
+        return "xsl"
+    try:
+        import omml  # noqa: F401
+    except Exception:  # noqa: BLE001
+        return "none"
+    return "python"
 
 
 def latex_to_omml(latex):
     """返回 m:oMath 元素；不可用时返回 None。"""
-    xsl_path = find_xsl()
-    if not xsl_path:
-        return None
     try:
         import latex2mathml.converter as conv
     except Exception:  # noqa: BLE001
         return None
+
+    xsl_path = find_xsl()
+    if not xsl_path:
+        return _python_fallback(conv.convert(latex))
     try:
         mathml = conv.convert(latex)
         dom = etree.fromstring(mathml.encode("utf-8"))
@@ -101,7 +117,16 @@ def latex_to_omml(latex):
         # 而 Word 接受这种就地声明的 oMath。
         return etree.fromstring(etree.tostring(res, encoding="unicode"))
     except Exception:  # noqa: BLE001
+        return _python_fallback(conv.convert(latex))
+
+
+def _python_fallback(mathml):
+    """没有 Office XSL 时用纯 Python 转换器（WPS / Linux / macOS）。"""
+    try:
+        from omml import mathml_to_omml
+    except Exception:  # noqa: BLE001
         return None
+    return mathml_to_omml(mathml)
 
 
 def add_math(paragraph, latex, size=12):
