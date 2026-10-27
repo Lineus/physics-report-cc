@@ -14,36 +14,14 @@
 """
 import glob
 import os
+import sys
 
 from lxml import etree
 
-_XSL_CANDIDATES = [
-    os.environ.get("MML2OMML_XSL", ""),
-    r"C:\Program Files\Microsoft Office\root\Office16\MML2OMML.XSL",
-    r"C:\Program Files (x86)\Microsoft Office\root\Office16\MML2OMML.XSL",
-    r"C:\Program Files\Microsoft Office\Office16\MML2OMML.XSL",
-    r"C:\Program Files (x86)\Microsoft Office\Office16\MML2OMML.XSL",
-    # WSL 下 Windows 路径的前缀写法
-    "/mnt/c/Program Files/Microsoft Office/root/Office16/MML2OMML.XSL",
-    "/mnt/c/Program Files (x86)/Microsoft Office/root/Office16/MML2OMML.XSL",
-    "/mnt/c/Program Files/Microsoft Office/Office16/MML2OMML.XSL",
-    "/mnt/c/Program Files (x86)/Microsoft Office/Office16/MML2OMML.XSL",
-    "/Applications/Microsoft Word.app/Contents/Resources/MML2OMML.XSL",
-]
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hostenv
 
-
-def _to_local(path):
-    r"""把 Windows 路径转成当前系统可访问的形式（WSL 下 C:\\x -> /mnt/c/x）。"""
-    if not path:
-        return ""
-    if os.path.exists(path):
-        return path
-    m = __import__("re").match(r"^([A-Za-z]):[\\/](.*)$", path)
-    if m and os.path.isdir("/mnt"):
-        cand = "/mnt/%s/%s" % (m.group(1).lower(), m.group(2).replace("\\", "/"))
-        if os.path.exists(cand):
-            return cand
-    return path
+_XSL_CANDIDATES = [os.environ.get("MML2OMML_XSL", "")] + hostenv.office_xsl_candidates()
 
 _cache = {}
 
@@ -54,19 +32,12 @@ def find_xsl():
         return _cache["xsl"]
     found = None
     for p in _XSL_CANDIDATES:
-        p = _to_local(p)
+        p = hostenv.to_local(p)
         if p and os.path.exists(p):
             found = p
             break
     if not found:
-        for pat in ("/mnt/c/Program Files/Microsoft Office/**/MML2OMML.XSL",
-                    "/mnt/c/Program Files (x86)/Microsoft Office/**/MML2OMML.XSL",
-                    r"C:\Program Files\Microsoft Office\**\MML2OMML.XSL",
-                    r"C:\Program Files (x86)\Microsoft Office\**\MML2OMML.XSL"):
-            hits = glob.glob(pat, recursive=True)
-            if hits:
-                found = hits[0]
-                break
+        found = hostenv.glob_xsl()
     _cache["xsl"] = found
     return found
 

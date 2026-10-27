@@ -20,6 +20,9 @@ import re
 import shutil
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hostenv
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(HERE)
 
@@ -41,10 +44,7 @@ def to_local(path):
         return path
     if os.path.exists(path):
         return path
-    m = re.match(r"^([A-Za-z]):[\\/](.*)$", path)
-    if m and os.path.isdir("/mnt"):
-        return "/mnt/%s/%s" % (m.group(1).lower(), m.group(2).replace("\\", "/"))
-    return path
+    return hostenv.to_local(path)
 
 
 def read_para_text(p):

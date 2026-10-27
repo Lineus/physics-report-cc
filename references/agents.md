@@ -53,3 +53,5 @@
 - **Windows 原生 Agent**（非 WSL）：`export_pdf.py` 的 `to_win()` 会原样返回 Windows 路径，Word / WPS COM 直接可用；LibreOffice 也走 `.exe`。
 - **只装 WPS**：不用装 Office。导出用 `KWPS.Application`，公式走 `scripts/omml.py`；`check_env.py` 会确认这两条链路。
 - **macOS**：Word COM 不存在，走 LibreOffice；`MML2OMML.XSL` 在 `Microsoft Word.app/Contents/Resources/`。
+- **Windows 上的 Python**：用 `py -3` 或 `python`；`python3` 在不少机器上只是商店占位符（运行会弹安装页）。
+- **路径写法**：Windows 用 `E:\物理实验\3`，WSL 用 `/mnt/e/物理实验/3`；`hostenv.to_win()` / `to_local()` 会自动换。

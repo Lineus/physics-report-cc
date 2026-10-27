@@ -11,10 +11,60 @@ matplotlib 在本机因 numpy ABI 不匹配不可用，统一用这个。
           yticks=[0.7,0.8,0.9,1.0], ylab='B / mT')
     # pts: line -> [(x, y)];  dot -> [(x, y, u)]，u 为 0/None 时不画误差棒
 """
+import os
+import sys
+
 import fitz
 from reportlab.graphics.shapes import Drawing, String, Line, Circle, PolyLine
 from reportlab.graphics import renderPDF
 from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hostenv
+
+# 中文标签必须有真字体：reportlab 内置的 Times-Roman / Helvetica 没有汉字，
+# 会整块画成黑方块。按平台找第一个能用的中文字体，找不到再退回 Times-Roman
+# （此时只适合纯英文标签）。
+CJK_CANDIDATES = [
+    r"C:\Windows\Fonts\simhei.ttf",
+    r"C:\Windows\Fonts\simsun.ttc",
+    r"C:\Windows\Fonts\msyh.ttc",
+    "/System/Library/Fonts/PingFang.ttc",
+    "/System/Library/Fonts/Supplemental/Songti.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/arphic/uming.ttc",
+]
+
+_FONT_NAME = None
+
+
+def cjk_font():
+    """注册并返回中文字体名；没有可用字体时返回 None。"""
+    global _FONT_NAME
+    if _FONT_NAME is not None:
+        return _FONT_NAME or None
+    for path in CJK_CANDIDATES:
+        real = hostenv.to_local(path)
+        if not real or not os.path.exists(real):
+            continue
+        try:
+            pdfmetrics.registerFont(TTFont("CJK", real))
+            _FONT_NAME = "CJK"
+            return _FONT_NAME
+        except Exception:  # noqa: BLE001
+            continue
+    _FONT_NAME = ""
+    return None
+
+
+def label_font():
+    """标签字体：有中文字体就用它，否则退回 Times-Roman。"""
+    return cjk_font() or "Times-Roman"
 
 NAVY = colors.HexColor('#244A70')
 GREY = colors.HexColor('#C9C9C9')
@@ -38,12 +88,12 @@ def chart(fname, series, xr, yr, xticks, yticks, ylab='B / mT',
 
     for t in xticks:
         dr.add(Line(X(t), Bm, X(t), Bm - 4, strokeColor=colors.black, strokeWidth=1.0))
-        dr.add(String(X(t), Bm - 16, '%g' % t, fontName='Times-Roman',
+        dr.add(String(X(t), Bm - 16, '%g' % t, fontName=label_font(),
                       fontSize=9.5, textAnchor='middle'))
     for t in yticks:
         dr.add(Line(L, Y(t), L - 4, Y(t), strokeColor=colors.black, strokeWidth=1.0))
         lab = ('%.3f' % t).rstrip('0').rstrip('.')
-        dr.add(String(L - 7, Y(t) - 3, lab, fontName='Times-Roman',
+        dr.add(String(L - 7, Y(t) - 3, lab, fontName=label_font(),
                       fontSize=9.5, textAnchor='end'))
 
     for s in series:
@@ -63,9 +113,9 @@ def chart(fname, series, xr, yr, xticks, yticks, ylab='B / mT',
                     dr.add(Line(cx - 2.4, cy - e, cx + 2.4, cy - e, strokeColor=colors.black, strokeWidth=0.7))
                 dr.add(Circle(cx, cy, 2.2, fillColor=colors.black, strokeColor=colors.black))
 
-    dr.add(String((L + Rr) / 2, 30, xlab, fontName='Times-Roman',
+    dr.add(String((L + Rr) / 2, 30, xlab, fontName=label_font(),
                   fontSize=10.5, textAnchor='middle'))
-    dr.add(String(10, T + 30, ylab, fontName='Times-Roman', fontSize=10.5))
+    dr.add(String(10, T + 30, ylab, fontName=label_font(), fontSize=10.5))
 
     if legend:
         x0 = W - 150
@@ -76,7 +126,7 @@ def chart(fname, series, xr, yr, xticks, yticks, ylab='B / mT',
                             strokeWidth=s.get('w', 1.5), strokeDashArray=s.get('dash')))
             else:
                 dr.add(Circle(x0 + 11, yy, 2.2, fillColor=colors.black, strokeColor=colors.black))
-            dr.add(String(x0 + 28, yy - 4, s['label'], fontName='Times-Roman', fontSize=9.0))
+            dr.add(String(x0 + 28, yy - 4, s['label'], fontName=label_font(), fontSize=9.0))
 
     renderPDF.drawToFile(dr, fname + '.pdf')
     d = fitz.open(fname + '.pdf')

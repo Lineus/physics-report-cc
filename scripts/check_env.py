@@ -8,6 +8,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hostenv
+
 OK = "OK  "
 BAD = "FAIL"
 
@@ -45,8 +48,8 @@ def check_math():
 def check_office():
     """导出 PDF 的三条路：Word COM / WPS COM / LibreOffice，有一条就够。"""
     found = []
-    ps = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
-    if os.path.exists(ps):
+    ps = hostenv.powershell()
+    if ps:
         for name, com in (("Word", "Word.Application"), ("WPS", "KWPS.Application")):
             try:
                 out = subprocess.run(
@@ -58,9 +61,12 @@ def check_office():
                 ver = ""
             if ver:
                 found.append(f"{name} {ver}")
-    for exe in ("soffice", "libreoffice"):
-        if shutil.which(exe):
-            found.append(exe)
+    for exe in (r"C:\Program Files\LibreOffice\program\soffice.exe",
+                r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+                "soffice", "libreoffice"):
+        hit = exe if os.path.exists(exe) else shutil.which(exe)
+        if hit:
+            found.append(os.path.basename(exe))
             break
     if found:
         print(f"{OK} 导出 PDF：{' / '.join(found)}")

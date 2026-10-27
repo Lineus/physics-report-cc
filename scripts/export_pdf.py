@@ -21,13 +21,12 @@ import shutil
 import subprocess
 import sys
 
-PWSH_CANDIDATES = [
-    "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
-    "powershell.exe",
-]
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hostenv
+
 SOFFICE_CANDIDATES = [
-    "/mnt/c/Program Files/LibreOffice/program/soffice.exe",
-    "/mnt/c/Program Files (x86)/LibreOffice/program/soffice.exe",
+    r"C:\Program Files\LibreOffice\program\soffice.exe",
+    r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
     "/Applications/LibreOffice.app/Contents/MacOS/soffice",
     "soffice",
     "libreoffice",
@@ -98,25 +97,13 @@ def decode(blob):
 
 
 def to_local(path):
-    """Windows 路径 → 当前系统路径（WSL: C:\\x -> /mnt/c/x）。"""
-    if os.path.exists(path):
-        return path
-    m = re.match(r"^([A-Za-z]):[\\/](.*)$", path)
-    if m and os.path.isdir("/mnt"):
-        cand = "/mnt/%s/%s" % (m.group(1).lower(), m.group(2).replace("\\", "/"))
-        if os.path.exists(cand):
-            return cand
-    return path
+    r"""Windows 路径 → 当前系统路径（WSL 下 C:\x -> /mnt/c/x；Windows 上不变）。"""
+    return hostenv.to_local(path)
 
 
 def to_win(path):
-    """当前系统路径 → Windows 路径（WSL: /mnt/c/x -> C:\\x）。已经是 Windows 形式就原样返回。"""
-    if re.match(r"^[A-Za-z]:[\\/]", path):
-        return path
-    m = re.match(r"^/mnt/([a-z])/(.*)$", path)
-    if m:
-        return "%s:\\%s" % (m.group(1).upper(), m.group(2).replace("/", "\\"))
-    return path
+    r"""当前系统路径 → Windows 路径（WSL 下 /mnt/c/x -> C:\x；Windows 上不变）。"""
+    return hostenv.to_win(path)
 
 
 def pick_file(directory, pattern):
@@ -132,8 +119,9 @@ def pick_file(directory, pattern):
 
 
 def first_existing(cands):
+    """按顺序找第一个存在的可执行文件。带路径的判断存在，裸名字走 PATH。"""
     for c in cands:
-        if os.path.sep in c or c.endswith("powershell.exe"):
+        if os.path.isabs(c) or os.path.sep in c or (os.altsep and os.altsep in c):
             if os.path.exists(c):
                 return c
         else:
@@ -144,7 +132,7 @@ def first_existing(cands):
 
 
 def word_export(directory, pattern):
-    pwsh = first_existing(PWSH_CANDIDATES)
+    pwsh = hostenv.powershell()
     if not pwsh:
         return None
     work = os.path.join(to_local(directory), "_work")
@@ -166,7 +154,7 @@ def word_export(directory, pattern):
 
 def _run_com_export(directory, pattern, template, label):
     """跑一段 COM 导出脚本（Word 或 WPS），返回 PDF 路径或 None。"""
-    pwsh = first_existing(PWSH_CANDIDATES)
+    pwsh = hostenv.powershell()
     if not pwsh:
         return None
     work = os.path.join(to_local(directory), "_work")
@@ -196,9 +184,11 @@ def soffice_export(directory, pattern):
     if not exe:
         return None
     src = pick_file(directory, pattern)
-    win_exe = exe.lower().endswith(".exe")
-    src_arg = to_win(src) if win_exe else src
-    outdir = to_win(os.path.dirname(src)) if win_exe else os.path.dirname(src)
+    # 只有「在 WSL 里调用 Windows 的 soffice.exe」才需要转路径；
+    # Windows 原生运行时路径本来就对，转换反而多余。
+    need_conv = exe.lower().endswith(".exe") and hostenv.IS_WSL
+    src_arg = to_win(src) if need_conv else src
+    outdir = to_win(os.path.dirname(src)) if need_conv else os.path.dirname(src)
     cmd = [exe, "--headless", "--norestore", "--convert-to", "pdf",
            "--outdir", outdir, src_arg]
     out = subprocess.run(cmd, capture_output=True, timeout=300)

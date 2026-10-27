@@ -43,6 +43,9 @@
 pip install -r requirements.txt
 ```
 
+**下文命令里的 `python3`**：Linux / macOS / WSL 直接照用；Windows 上用 `py -3` 或 `python`
+（很多 Windows 机器没有 `python3` 这个命令，只有 `py`）。
+
 ## 安装
 
 克隆到任意位置，再让 Agent 知道它在哪即可。
@@ -197,6 +200,7 @@ python3 scripts/memory.py note "<根目录>" "图注不要带公式"
 | `scripts/pdf_extract_figs.py` | 从课件 PDF 取原图（位图 / 矢量） |
 | `scripts/chart.py` | reportlab 画坐标图 + 误差棒（替代坏掉的 matplotlib） |
 | `scripts/export_pdf.py` | 导 PDF：Word COM → WPS COM → LibreOffice |
+| `scripts/hostenv.py` | 平台差异：找 PowerShell、Windows↔WSL 路径、Office XSL 位置 |
 | `scripts/omml.py` | MathML → OMML 纯 Python 转换（无 Office 时用） |
 | `scripts/plan.py` | 读 config.yaml，算目录 / 文件名 / 周次 / 模板 |
 | `scripts/refs.py` | 扫旧稿：字数 / 图数 / 公式数 / 章节骨架，只作结构参考 |

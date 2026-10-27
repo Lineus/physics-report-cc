@@ -128,7 +128,11 @@ from docx_fill import add_rich, clear_between, figure_block, find, open_base, te
 from chart import chart
 ```
 
-命令行脚本（`plan` / `refs` / `proof` / `export_pdf` / `memory` / `setup` / `check_env`）直接 `python3 <路径>` 运行。
+命令行脚本（`plan` / `refs` / `proof` / `export_pdf` / `memory` / `setup` / `check_env`）直接运行。
+本文件里写的 `python3` 在 Windows 上换成 `py -3` 或 `python`；路径分隔符用 `\`，两者别混。
+
+平台差异集中在 `scripts/hostenv.py`（找 PowerShell、Windows↔WSL 路径互转、Office XSL 位置），
+脚本里不要再自己判断 `os.name` 或拼 `/mnt/...`。
 
 ## 排版铁律
 

@@ -21,6 +21,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hostenv
+
 import fitz
 
 W_T = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"
@@ -162,9 +165,7 @@ def main():
     a = ap.parse_args()
 
     base = a.directory
-    m = re.match(r"^([A-Za-z]):[\\/](.*)$", base)
-    if m and os.path.isdir("/mnt"):
-        base = "/mnt/%s/%s" % (m.group(1).lower(), m.group(2).replace("\\", "/"))
+    base = hostenv.to_local(base)
 
     docx = [p for p in glob.glob(os.path.join(base, a.pattern))
             if not os.path.basename(p).startswith("~$")]
